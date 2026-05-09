@@ -1,0 +1,12 @@
+.vs/
+.vscode/
+*.user
+*.suo
+*.tmp
+*.etl
+*.evtx
+*.dmp
+*.zip
+
+logs/*
+!logs/.gitkeep
