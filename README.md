@@ -1,22 +1,25 @@
 # WoT Cursor Freeze Fix
-# README полностью написан GPT, как и сам фикс. Готовьтесь немного почитать нейрослоп =)
 
-Локальный workaround для World of Tanks, который убирает фриз при первом показе курсора в бою: `Ctrl`, `Esc`, внутриигровой `Tab`, чат/`Enter` и похожие действия.
+Language: [English](README.md) | [Russian](README.ru.md)
 
-## Кратко
+> README fully written by GPT, just like the fix itself. Prepare to read a bit of AI slop =)
 
-У некоторых игроков WoT может фризить на 1-3 секунды, когда игра впервые за долгое время показывает курсор в бою. Чем дольше до этого двигать мышкой со скрытым курсором, тем сильнее следующий фриз.
+An in-memory workaround for a World of Tanks battle freeze that happens when the game shows the cursor: `Ctrl`, `Esc`, in-game `Tab`, chat/`Enter`, and similar UI actions.
 
-Этот фикс:
+## Short Version
 
-- патчит **память уже запущенного процесса** `WorldOfTanks.exe`;
-- не изменяет `WorldOfTanks.exe` на диске;
-- не устанавливает файлы в `res_mods`;
-- не меняет настройки Windows, драйверов, оверлеев или игры;
-- автоматически откатывается при перезапуске WoT, потому что живет только в памяти процесса;
-- отказывается патчить, если байты в игре не совпадают с проверенной версией.
+Some WoT clients can freeze for 1-3 seconds when the battle UI shows the mouse cursor after it has been hidden for a while. The more you move the mouse while the cursor is hidden, the longer the next cursor-show freeze can become.
 
-Проверенный патч:
+This fix:
+
+- patches the memory of an already running `WorldOfTanks.exe` process;
+- does not modify `WorldOfTanks.exe` on disk;
+- does not install anything into `res_mods`;
+- does not change Windows, driver, overlay, or game settings;
+- disappears automatically when WoT exits, because it exists only in process memory;
+- refuses to patch if the target bytes do not match the verified client build.
+
+Verified patch:
 
 ```text
 WorldOfTanks.exe RVA: 0x3c5633
@@ -24,44 +27,44 @@ original bytes:       74 09
 patched bytes:        74 18
 ```
 
-## Важное предупреждение
+## Important Warning
 
-Это **не обычный WoT mod** и не `.wotmod` для папки `mods`/`res_mods`.
+This is **not a normal WoT mod** and it is not a `.wotmod` package for the `mods` or `res_mods` folders.
 
-Это внешний runtime patcher: он открывает процесс `WorldOfTanks.exe` и меняет 2 байта в памяти процесса. По смыслу патч узкий и технически направлен только на баг с системным курсором, но любой memory patcher может быть чувствительной темой для античита и правил игры.
+This is an external runtime patcher. It opens `WorldOfTanks.exe` and changes 2 bytes in the running process memory. The patch is narrow and targets only the cursor bug described here, but any memory patcher can be sensitive from an anticheat / game-rules point of view.
 
-Используйте на свой риск. Лучший финальный вариант - чтобы Wargaming исправили этот баг в клиенте.
+Use it at your own risk. The proper final fix should come from Wargaming.
 
-## Для кого этот фикс
+## Who This Is For
 
-Фикс имеет смысл пробовать, если симптомы совпадают:
+This workaround is worth trying if your symptoms match this pattern:
 
-- фриз появляется именно при показе курсора в бою;
-- триггеры похожие: `Ctrl`, `Esc`, внутриигровой `Tab`, чат/`Enter`;
-- после первого фриза повторное нажатие почти сразу работает быстро;
-- если минуту активно двигать мышкой со скрытым курсором, следующий показ курсора фризит сильнее;
-- если минуту почти не двигать мышкой, следующий показ курсора почти не фризит.
+- the freeze happens specifically when the battle UI shows the cursor;
+- the triggers are `Ctrl`, `Esc`, in-game `Tab`, chat/`Enter`, or similar cursor-show actions;
+- pressing the same key again immediately after the first freeze is fast;
+- if you actively move the mouse for a minute while the cursor is hidden, the next cursor show freezes harder;
+- if you barely move the mouse for a minute, the next cursor show is fast or almost fast.
 
-Фикс не предназначен для сетевых лагов, просадок FPS от графики, статтеров от загрузки ресурсов, проблем с модами или зависаний при alt-tab вне этого сценария.
+This is not meant to fix network lag, graphics FPS drops, asset-loading stutter, mod issues, or unrelated alt-tab hangs.
 
-## Быстрая установка
+## Quick Install
 
-1. Скачайте release zip или склонируйте репозиторий.
-2. Распакуйте папку куда угодно, например:
+1. Download a release zip or clone the repository.
+2. Extract it anywhere, for example:
 
 ```text
 C:\Tools\wot-cursor-freeze-fix
 ```
 
-3. Запустите WoT.
-4. Откройте PowerShell в папке фикса.
-5. Выполните:
+3. Start WoT.
+4. Open PowerShell in the fix folder.
+5. Run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\apply.ps1
 ```
 
-Ожидаемый успешный вывод:
+Expected successful output:
 
 ```text
 target=WorldOfTanks.exe pid=... base=0x... rva=0x3C5633 address=0x... current=74 09
@@ -69,62 +72,62 @@ status=patched
 patched hide branch: je +0x09 -> je +0x18
 ```
 
-Проверить статус:
+Check status:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\status.ps1
 ```
 
-Ожидаемый статус после применения:
+Expected status after applying:
 
 ```text
 current=74 18
 status=patched
 ```
 
-## Автоматическое применение при запуске WoT
+## Automatic Apply On WoT Start
 
-Так как патч живет только в памяти процесса, после перезапуска игры его нужно применять снова. Для удобства есть автопатчер через Windows Scheduled Task.
+Because the patch lives only in process memory, it must be applied again after every WoT restart. For convenience, this package includes an optional Windows Scheduled Task based autopatcher.
 
-Установить автопатчер:
+Install the autopatcher:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\install-autopatch.ps1
 ```
 
-Что он делает:
+What it does:
 
-- создает задачу Windows Scheduler `WoT Cursor Freeze Fix AutoPatch`;
-- задача стартует при входе пользователя в Windows;
-- в фоне запускается `scripts\watch-autopatch.ps1`;
-- watcher раз в 2 секунды проверяет, появился ли `WorldOfTanks.exe`;
-- если игра запущена и байты оригинальные `74 09`, применяется патч;
-- если уже `74 18`, ничего не делает;
-- если байты неожиданные, пишет в лог и **не патчит**.
+- creates a Windows Scheduler task named `WoT Cursor Freeze Fix AutoPatch`;
+- starts at user logon;
+- runs `scripts\watch-autopatch.ps1` in the background;
+- checks every 2 seconds whether `WorldOfTanks.exe` is running;
+- applies the patch if the game is running and the bytes are original `74 09`;
+- does nothing if the bytes are already patched `74 18`;
+- logs and refuses to patch if the bytes are unexpected.
 
-Проверить автопатчер:
+Check autopatcher status:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\status-autopatch.ps1
 ```
 
-Удалить автопатчер:
+Uninstall the autopatcher:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\uninstall-autopatch.ps1
 ```
 
-Важно: удаление автопатчера не меняет уже запущенную игру. Чтобы убрать патч из текущего процесса WoT, выполните rollback или просто перезапустите игру.
+Important: uninstalling the autopatcher does not change an already running WoT process. To remove the patch from the current game process, run rollback or restart WoT.
 
-## Ручной откат
+## Manual Rollback
 
-Если WoT запущен и нужно вернуть оригинальные байты без перезапуска:
+If WoT is running and you want to restore the original bytes without restarting the game:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\rollback.ps1
 ```
 
-Ожидаемый вывод:
+Expected output:
 
 ```text
 current=74 18
@@ -132,42 +135,42 @@ status=original
 rolled back hide branch patch
 ```
 
-Самый простой откат - закрыть и заново открыть WoT. Патч не записывается на диск, поэтому исчезает вместе с процессом.
+The simplest rollback is closing WoT and starting it again. The patch is never written to the game file on disk.
 
-## Совместимость с версиями WoT
+## Version Compatibility
 
-Текущий релиз подтвержден на клиенте WoT, который был исследован 2026-05-09. В этой версии нужная инструкция находится по RVA `0x3c5633` и имеет байты `74 09`.
+This release was confirmed on the WoT client build investigated on 2026-05-09. In that build, the target instruction is at RVA `0x3c5633` and the original bytes are `74 09`.
 
-После обновления WoT возможны варианты:
+After a WoT update, several things can happen:
 
-- код не изменился: патчер продолжит работать;
-- код сдвинулся или изменился: патчер увидит неожиданные байты и откажется писать;
-- Wargaming исправили баг: патч может стать не нужен;
-- Wargaming переписали этот участок: нужен новый анализ и новая версия патчера.
+- the code did not change: the patcher should still work;
+- the code moved or changed: the patcher should detect unexpected bytes and refuse to write;
+- Wargaming fixed the bug: this workaround may no longer be needed;
+- Wargaming rewrote this area: a new analysis and patcher update would be required.
 
-Это сделано специально. Лучше получить `status=unknown`, чем записать байты в случайное место.
+This fail-closed behavior is intentional. Getting `status=unknown` is much better than writing bytes into the wrong place.
 
-Если вы получили `status=unknown`, не пытайтесь форсировать патч. Создайте issue и приложите:
+If you get `status=unknown`, do not force the patch. Open an issue and include:
 
-- полный вывод `scripts\status.ps1`;
-- регион и версию клиента WoT;
-- дату обновления клиента;
-- путь к `WorldOfTanks.exe`;
+- full output of `scripts\status.ps1`;
+- WoT region and client version;
+- date of the latest client update;
+- path to `WorldOfTanks.exe`;
 - Windows version/build;
-- описание симптомов.
+- symptom description.
 
-## Как это работает простыми словами
+## How It Works In Plain English
 
-В Windows есть старый API `ShowCursor`. У него есть счетчик видимости курсора:
+Windows has an old API called `ShowCursor`. It uses a cursor display counter:
 
-- `ShowCursor(FALSE)` уменьшает счетчик;
-- `ShowCursor(TRUE)` увеличивает счетчик;
-- курсор считается видимым, когда счетчик стал `>= 0`;
-- курсор считается скрытым, когда счетчик `< 0`.
+- `ShowCursor(FALSE)` decrements the counter;
+- `ShowCursor(TRUE)` increments the counter;
+- the cursor is visible when the counter is `>= 0`;
+- the cursor is hidden when the counter is `< 0`.
 
-Нормальный код не должен бесконечно вызывать `ShowCursor(FALSE)`, если курсор уже скрыт. Иначе счетчик может уйти глубоко в минус.
+Code should not keep calling `ShowCursor(FALSE)` when the cursor is already hidden. If it does, the counter can go deeply negative.
 
-В исследованной версии WoT/BigWorld есть native cursor helper, который делает примерно так:
+In the investigated WoT/BigWorld client, the native cursor helper behaves roughly like this:
 
 ```text
 show:
@@ -177,9 +180,9 @@ hide:
   call ShowCursor(FALSE) until counter < 0
 ```
 
-Проблема в том, что скрытое движение мыши в бою может повторно заходить в hide-ветку, когда курсор уже скрыт. Из-за этого счетчик `ShowCursor` уходит глубоко в минус.
+The problem is that hidden mouse movement in battle can repeatedly enter the hide branch while the cursor is already hidden. This drives the `ShowCursor` counter deeply negative.
 
-Потом игрок нажимает `Ctrl`, `Esc`, открывает чат или другое окно. WoT должен показать курсор и начинает чинить счетчик через много вызовов `ShowCursor(TRUE)`. Во время этих вызовов поток игры синхронно попадает в Windows `win32k` путь курсора и deferred window events:
+Then the player presses `Ctrl`, `Esc`, opens chat, or opens another UI. WoT needs to show the cursor and starts repairing the counter through many `ShowCursor(TRUE)` calls. During those calls, the game thread synchronously enters the Windows `win32k` cursor / deferred-window-event path:
 
 ```text
 NtUserShowCursor
@@ -188,40 +191,40 @@ NtUserShowCursor
 -> xxxFlushDeferredWindowEvents
 ```
 
-Это и выглядит как фриз.
+That synchronous Windows work is the visible freeze.
 
-Патч меняет один conditional jump так, чтобы WoT пропускал лишний native hide call в WndProc/DirectInput ветке. Показ курсора остается рабочим, но движение мыши со скрытым курсором больше не загоняет счетчик в огромный минус.
+The patch changes one conditional jump so WoT skips the repeated native hide call in the WndProc/DirectInput branch. Cursor showing still works, but hidden mouse movement no longer pushes the Win32 `ShowCursor` counter into a huge negative value.
 
-## Что именно патчится
+## What Exactly Is Patched
 
-Проверенный участок:
+Verified area:
 
 ```text
 WorldOfTanks!0x1403c5631  test al, al
 WorldOfTanks!0x1403c5633  je   ...
 ```
 
-Оригинально:
+Original bytes:
 
 ```text
 74 09
 ```
 
-После патча:
+Patched bytes:
 
 ```text
 74 18
 ```
 
-Смысл:
+Meaning:
 
-- оригинальный `je +0x09` вел в ветку, которая все равно вызывала native cursor helper для hide;
-- новый `je +0x18` перепрыгивает через этот hide-вызов;
-- show-ветка с `dl=1` не отключается.
+- the original `je +0x09` still reached a branch that called the native cursor helper for hide;
+- the new `je +0x18` jumps over that hide call;
+- the show path with `dl=1` is left intact.
 
-## Доказательства из диагностики
+## Evidence
 
-В реальном WoT фриз на `GUI.MouseCursor.visible=True` шел по стеку:
+During the real WoT freeze, ETW showed this blocking stack:
 
 ```text
 GUI.MouseCursor.visible=True
@@ -233,7 +236,7 @@ GUI.MouseCursor.visible=True
 -> xxxFlushDeferredWindowEvents
 ```
 
-Скрытое движение мыши входило в тот же native cursor helper из DirectInput/User32 пути:
+Hidden mouse movement entered the same native cursor helper from the DirectInput/User32 path:
 
 ```text
 dinput8
@@ -242,15 +245,15 @@ dinput8
 -> WorldOfTanks!0x142198b0d
 ```
 
-Отдельный repro с повторным `ShowCursor(FALSE)` на hidden mouse move показал глубокий underflow счетчика:
+A separate repro that intentionally called `ShowCursor(FALSE)` on every hidden mouse move proved deep counter underflow:
 
 ```text
 manual_show_ControlKey ms=9.713 loops=128 result=-12287
 ```
 
-То есть счетчик был примерно около `-12415`. В WoT нет такого лимита на 128 итераций, поэтому клиент мог делать тысячи `ShowCursor(TRUE)` вызовов подряд.
+The repro capped repair at 128 loops. That result means the counter was roughly around `-12415`. The observed WoT helper had no such 128-loop cap, so it could run thousands of `ShowCursor(TRUE)` calls.
 
-После применения патча проверка в WoT показала:
+After applying the patch in WoT:
 
 ```text
 show_count=19
@@ -261,38 +264,39 @@ max_mouse_count=8612
 max_age_ms=32118
 ```
 
-Самый важный тест: после 32 секунд и 8612 событий скрытой мыши показ курсора занял 0-2 мс. До патча похожие условия давали сотни или тысячи миллисекунд.
+The strongest validation: after 32 seconds and 8612 hidden mouse events, cursor show stayed within 0-2 ms. Before the patch, comparable conditions produced freezes in hundreds or thousands of milliseconds.
 
-Больше технических деталей лежит в [docs/technical-findings.md](docs/technical-findings.md).
+More details are in [docs/technical-findings.md](docs/technical-findings.md).
 
-## Сборка из исходников
+## Building From Source
 
-Если вы не хотите использовать готовый `bin\WotCursorHideCallPatch.exe`, соберите его сами:
+If you do not want to use the prebuilt `bin\WotCursorHideCallPatch.exe`, build it yourself:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1
 ```
 
-Скрипт ищет `csc.exe` из .NET Framework:
+The script looks for `csc.exe` from .NET Framework:
 
 ```text
 %WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe
 %WINDIR%\Microsoft.NET\Framework\v4.0.30319\csc.exe
 ```
 
-На выходе будет:
+Output:
 
 ```text
 bin\WotCursorHideCallPatch.exe
 ```
 
-SHA256 готового бинарника из этого пакета указан в `CHECKSUMS.sha256`.
+The SHA256 of the included binary is listed in `CHECKSUMS.sha256`.
 
-## Структура проекта
+## Project Layout
 
 ```text
 wot-cursor-freeze-fix\
   README.md
+  README.ru.md
   CHANGELOG.md
   CHECKSUMS.sha256
   RELEASE_CHECKLIST.md
@@ -322,80 +326,80 @@ wot-cursor-freeze-fix\
 
 ### `WorldOfTanks.exe is not running`
 
-Запустите WoT и повторите команду.
+Start WoT and run the command again.
 
 ### `status=unknown`
 
-Версия клиента не совпала с проверенной сигнатурой или Wargaming изменили код. Патчер правильно отказался писать. Не форсируйте патч.
+The client version does not match the verified byte signature, or Wargaming changed the code. The patcher correctly refused to write. Do not force the patch.
 
 ### `OpenProcess failed: 5`
 
-Обычно это означает проблему с правами. Запускайте патчер из того же пользователя и с тем же уровнем прав, что и WoT. Если WoT запущен от администратора, PowerShell тоже должен быть запущен от администратора.
+This usually means a permission mismatch. Run the patcher as the same user and with the same privilege level as WoT. If WoT is running as administrator, PowerShell must also be running as administrator.
 
-### PowerShell запрещает запуск скриптов
+### PowerShell blocks script execution
 
-Используйте запуск с bypass для конкретной команды:
+Use `-ExecutionPolicy Bypass` for this command:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\apply.ps1
 ```
 
-### После перезапуска игры патч пропал
+### The patch disappears after restarting the game
 
-Это нормально. Патч живет только в памяти процесса. Установите автопатчер через `scripts\install-autopatch.ps1` или применяйте вручную после запуска WoT.
+That is expected. The patch exists only in process memory. Install the autopatcher with `scripts\install-autopatch.ps1` or apply it manually after starting WoT.
 
-### Антивирус ругается
+### Antivirus warning
 
-Патчер использует `OpenProcess`, `ReadProcessMemory`, `VirtualProtectEx` и `WriteProcessMemory`. Это нормальная техника для этого workaround, но такие API могут выглядеть подозрительно для защитного ПО. Исходник открыт в `src\WotCursorHideCallPatch.cs`.
+The patcher uses `OpenProcess`, `ReadProcessMemory`, `VirtualProtectEx`, and `WriteProcessMemory`. That is expected for this workaround, but these APIs may look suspicious to security tools. The source code is in `src\WotCursorHideCallPatch.cs`.
 
-## Что не является причиной этого конкретного бага
+## What Was Not The Root Cause In The Confirmed Case
 
-В ходе диагностики для подтвержденного случая были исключены как достаточная/root cause причина:
+For the confirmed case, the evidence did not point to these as sufficient/root causes:
 
-- моды WoT;
+- WoT mods;
 - reinstall/cache;
 - VPN/network;
 - WGC;
 - RTSS/MSI Afterburner;
-- NVIDIA App как достаточная причина;
-- OBS/Discord overlay как достаточная причина;
+- NVIDIA App as sufficient/root;
+- OBS/Discord overlay as sufficient/root;
 - HAGS;
-- polling rate мыши как root cause;
+- mouse polling rate as root cause;
 - Windows cursor crosshair setting;
 - Windows cursor deadzone/jumping setting;
-- двухмониторная конфигурация сама по себе.
+- dual-monitor layout by itself.
 
-Некоторые из этих факторов могут менять тайминги или окружение, но подтвержденный механизм был ниже: повторный WoT/BigWorld native hide call загонял Win32 `ShowCursor` counter в underflow.
+Some of these can affect timing or environment, but the confirmed mechanism was lower level: a repeated WoT/BigWorld native hide call drove the Win32 `ShowCursor` counter into underflow.
 
 ## FAQ
 
-### Это мод?
+### Is this a mod?
 
-Нет. Это внешний memory patcher. Он не устанавливается в `mods` или `res_mods`.
+No. It is an external memory patcher. It does not install into `mods` or `res_mods`.
 
-### Он меняет файлы игры?
+### Does it modify game files?
 
-Нет. Он меняет 2 байта только в памяти запущенного процесса `WorldOfTanks.exe`.
+No. It changes 2 bytes only in the memory of the running `WorldOfTanks.exe` process.
 
-### Он будет работать на любой версии WoT?
+### Will it work on every WoT version?
 
-Не гарантировано. Патчер безопасно откажется работать, если байты по проверенному RVA не совпадают.
+No guarantee. The patcher safely refuses to run if the bytes at the verified RVA do not match.
 
-### Почему у большинства игроков нет этого бага?
+### Why do most players not have this bug?
 
-Нужна комбинация конкретного WoT native cursor path и состояния Windows/input/win32k, при которой повторные скрытия курсора становятся дорогими при следующем показе. У многих игроков счетчик не уходит глубоко в минус или Windows path не накапливает такой объем работы.
+The bug appears to require a specific combination of WoT's native cursor path and Windows/input/win32k state. Many players either do not enter this bad path or do not accumulate enough cursor-counter debt for the next cursor show to become visibly expensive.
 
-### Почему `Ctrl`, `Esc`, `Tab` и чат фризят одинаково?
+### Why do `Ctrl`, `Esc`, `Tab`, and chat freeze in the same way?
 
-Потому что общий тяжелый шаг у них один: игра показывает системный курсор. Конкретное окно не было root cause.
+Because their shared expensive step is showing the system cursor. The specific UI window was not the root cause.
 
-### Какой правильный upstream fix?
+### What should the upstream fix be?
 
-WoT/BigWorld должен сделать скрытие курсора идемпотентным: не вызывать `ShowCursor(FALSE)` повторно, если курсор уже скрыт, или не доводить Win32 cursor display counter до глубокого отрицательного значения.
+WoT/BigWorld should make cursor hiding idempotent: avoid repeated `ShowCursor(FALSE)` calls when the cursor is already hidden, or otherwise avoid driving the Win32 cursor display counter deeply negative.
 
-## Для issue
+## Issue Template
 
-Если фикс не применился или не помог, приложите:
+If the fix does not apply or does not help, please include:
 
 ```text
 1. Output of scripts\status.ps1
