@@ -13,11 +13,15 @@ internal static class WotCursorHideCallPatch
     private const int PROCESS_QUERY_INFORMATION = 0x0400;
     private const int PAGE_EXECUTE_READWRITE = 0x40;
 
-    // Verified on the WoT client build observed on 2026-05-09.
-    // This intentionally fails closed on other builds if the bytes do not match.
-    private const long PatchRva = 0x3c5633;
+    // Verified cursor-hide branch targets. The patcher intentionally fails closed
+    // on other builds if none of these RVAs contain the expected bytes.
     private static readonly byte[] OriginalBytes = { 0x74, 0x09 };
     private static readonly byte[] PatchedBytes = { 0x74, 0x18 };
+    private static readonly PatchTarget[] PatchTargets =
+    {
+        new PatchTarget("WoT 2.3.0.1476 #2555989", 0x3c5663),
+        new PatchTarget("WoT 2.2.1.x observed 2026-05-09", 0x3c5633)
+    };
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr OpenProcess(int desiredAccess, bool inheritHandle, int processId);
@@ -38,6 +42,25 @@ internal static class WotCursorHideCallPatch
     {
         public string Mode = "status";
         public int? Pid;
+    }
+
+    private sealed class PatchTarget
+    {
+        public readonly string Label;
+        public readonly long Rva;
+
+        public PatchTarget(string label, long rva)
+        {
+            Label = label;
+            Rva = rva;
+        }
+    }
+
+    private sealed class TargetState
+    {
+        public PatchTarget Target;
+        public IntPtr Address;
+        public byte[] Current;
     }
 
     private static int Main(string[] args)
@@ -77,7 +100,6 @@ internal static class WotCursorHideCallPatch
             return 4;
         }
 
-        var address = IntPtr.Add(module.BaseAddress, checked((int)PatchRva));
         var handle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, process.Id);
         if (handle == IntPtr.Zero)
         {
@@ -87,27 +109,42 @@ internal static class WotCursorHideCallPatch
 
         try
         {
-            var current = ReadExact(handle, address, OriginalBytes.Length);
-            Console.WriteLine(
-                "target=WorldOfTanks.exe pid={0} base=0x{1:X} rva=0x{2:X} address=0x{3:X} current={4}",
-                process.Id,
-                module.BaseAddress.ToInt64(),
-                PatchRva,
-                address.ToInt64(),
-                Hex(current));
+            var states = ReadTargetStates(handle, module.BaseAddress);
+            foreach (var state in states)
+            {
+                Console.WriteLine(
+                    "target=WorldOfTanks.exe pid={0} base=0x{1:X} label=\"{2}\" rva=0x{3:X} address=0x{4:X} current={5}",
+                    process.Id,
+                    module.BaseAddress.ToInt64(),
+                    state.Target.Label,
+                    state.Target.Rva,
+                    state.Address.ToInt64(),
+                    Hex(state.Current));
+            }
+
+            var selected = SelectTarget(states);
 
             if (options.Mode == "status")
             {
-                PrintStatus(current);
+                PrintStatus(selected);
                 return 0;
+            }
+
+            if (selected == null)
+            {
+                Console.WriteLine("status=unknown");
+                Console.Error.WriteLine("No known patch target has expected original/patched bytes; refusing to write.");
+                Console.Error.WriteLine("Expected original bytes: " + Hex(OriginalBytes));
+                Console.Error.WriteLine("Expected patched bytes:  " + Hex(PatchedBytes));
+                return options.Mode == "apply" ? 6 : 7;
             }
 
             if (options.Mode == "apply")
             {
-                return Apply(handle, address, current);
+                return Apply(handle, selected);
             }
 
-            return Rollback(handle, address, current);
+            return Rollback(handle, selected);
         }
         catch (Exception ex)
         {
@@ -120,16 +157,46 @@ internal static class WotCursorHideCallPatch
         }
     }
 
-    private static int Apply(IntPtr handle, IntPtr address, byte[] current)
+    private static TargetState[] ReadTargetStates(IntPtr handle, IntPtr baseAddress)
     {
-        if (BytesEqual(current, PatchedBytes))
+        var states = new TargetState[PatchTargets.Length];
+        for (var i = 0; i < PatchTargets.Length; i++)
+        {
+            var target = PatchTargets[i];
+            var address = IntPtr.Add(baseAddress, checked((int)target.Rva));
+            states[i] = new TargetState
+            {
+                Target = target,
+                Address = address,
+                Current = ReadExact(handle, address, OriginalBytes.Length)
+            };
+        }
+        return states;
+    }
+
+    private static TargetState SelectTarget(TargetState[] states)
+    {
+        foreach (var state in states)
+            if (BytesEqual(state.Current, OriginalBytes))
+                return state;
+
+        foreach (var state in states)
+            if (BytesEqual(state.Current, PatchedBytes))
+                return state;
+
+        return null;
+    }
+
+    private static int Apply(IntPtr handle, TargetState state)
+    {
+        if (BytesEqual(state.Current, PatchedBytes))
         {
             Console.WriteLine("status=patched");
             Console.WriteLine("already patched");
             return 0;
         }
 
-        if (!BytesEqual(current, OriginalBytes))
+        if (!BytesEqual(state.Current, OriginalBytes))
         {
             Console.WriteLine("status=unknown");
             Console.Error.WriteLine("Unexpected bytes; refusing to patch.");
@@ -138,22 +205,22 @@ internal static class WotCursorHideCallPatch
             return 6;
         }
 
-        WriteExact(handle, address, PatchedBytes);
+        WriteExact(handle, state.Address, PatchedBytes);
         Console.WriteLine("status=patched");
-        Console.WriteLine("patched hide branch: je +0x09 -> je +0x18");
+        Console.WriteLine("patched hide branch: label=\"{0}\" rva=0x{1:X} je +0x09 -> je +0x18", state.Target.Label, state.Target.Rva);
         return 0;
     }
 
-    private static int Rollback(IntPtr handle, IntPtr address, byte[] current)
+    private static int Rollback(IntPtr handle, TargetState state)
     {
-        if (BytesEqual(current, OriginalBytes))
+        if (BytesEqual(state.Current, OriginalBytes))
         {
             Console.WriteLine("status=original");
             Console.WriteLine("already original");
             return 0;
         }
 
-        if (!BytesEqual(current, PatchedBytes))
+        if (!BytesEqual(state.Current, PatchedBytes))
         {
             Console.WriteLine("status=unknown");
             Console.Error.WriteLine("Unexpected bytes; refusing to rollback.");
@@ -162,17 +229,23 @@ internal static class WotCursorHideCallPatch
             return 7;
         }
 
-        WriteExact(handle, address, OriginalBytes);
+        WriteExact(handle, state.Address, OriginalBytes);
         Console.WriteLine("status=original");
-        Console.WriteLine("rolled back hide branch patch");
+        Console.WriteLine("rolled back hide branch patch: label=\"{0}\" rva=0x{1:X}", state.Target.Label, state.Target.Rva);
         return 0;
     }
 
-    private static void PrintStatus(byte[] current)
+    private static void PrintStatus(TargetState selected)
     {
-        if (BytesEqual(current, OriginalBytes))
+        if (selected == null)
+        {
+            Console.WriteLine("status=unknown");
+            return;
+        }
+
+        if (BytesEqual(selected.Current, OriginalBytes))
             Console.WriteLine("status=original");
-        else if (BytesEqual(current, PatchedBytes))
+        else if (BytesEqual(selected.Current, PatchedBytes))
             Console.WriteLine("status=patched");
         else
             Console.WriteLine("status=unknown");

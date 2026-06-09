@@ -19,12 +19,18 @@ This fix:
 - disappears automatically when WoT exits, because it exists only in process memory;
 - refuses to patch if the target bytes do not match the verified client build.
 
-Verified patch:
+Verified patch bytes:
 
 ```text
-WorldOfTanks.exe RVA: 0x3c5633
 original bytes:       74 09
 patched bytes:        74 18
+```
+
+Known verified targets:
+
+```text
+WoT 2.3.0.1476 #2555989: RVA 0x3c5663
+WoT 2.2.1.x observed 2026-05-09: RVA 0x3c5633
 ```
 
 ## Important Warning
@@ -67,9 +73,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\apply.ps1
 Expected successful output:
 
 ```text
-target=WorldOfTanks.exe pid=... base=0x... rva=0x3C5633 address=0x... current=74 09
+target=WorldOfTanks.exe pid=... base=0x... label="..." rva=0x... address=0x... current=74 09
 status=patched
-patched hide branch: je +0x09 -> je +0x18
+patched hide branch: label="..." rva=0x... je +0x09 -> je +0x18
 ```
 
 Check status:
@@ -139,7 +145,14 @@ The simplest rollback is closing WoT and starting it again. The patch is never w
 
 ## Version Compatibility
 
-This release was confirmed on the WoT client build investigated on 2026-05-09. In that build, the target instruction is at RVA `0x3c5633` and the original bytes are `74 09`.
+This release has verified targets for:
+
+```text
+WoT 2.3.0.1476 #2555989: RVA 0x3c5663
+WoT 2.2.1.x observed 2026-05-09: RVA 0x3c5633
+```
+
+In both builds, the original bytes are `74 09` and the patched bytes are `74 18`.
 
 After a WoT update, several things can happen:
 
@@ -383,7 +396,7 @@ No. It changes 2 bytes only in the memory of the running `WorldOfTanks.exe` proc
 
 ### Will it work on every WoT version?
 
-No guarantee. The patcher safely refuses to run if the bytes at the verified RVA do not match.
+No guarantee. The patcher safely refuses to run if no known verified RVA contains the expected original/patched bytes.
 
 ### Why do most players not have this bug?
 
